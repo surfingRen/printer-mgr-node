@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="https://cdn.bootcss.com/toastr.js/latest/toastr.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap.min.css">
+    <title>打印机管理</title>
+    <style>
+        .wrapper {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .m-5 {
+            margin: 5px;
+        }
+
+        .printer {
+            width: 600px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper" style="margin-top:20px;">
+        <div class="alert alert-info" role="alert">启动成功</div>
+        <ul class="nav nav-pills">
+            <li role="presentation"><a href="index.html">首页</a></li>
+            <li role="presentation" class="active"><a href="config.html">配置</a></li>
+        </ul>
+        <div class="page-header">
+            <h1>云配置 <small> 配置连接云端 </small></h1>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                云端地址
+            </div>
+            <div class="panel-body">
+                <div class="input-group" style="width: 450px;">
+                    <span class="input-group-addon" id="basic-addon1">云端服务器地址</span>
+                    <input type="text" class="form-control" id="host" value="" style="width:160px;">
+                    <span class="input-group-addon" id="basic-addon1">端口</span>
+                    <input type="text" id="port" class="form-control" value="" style="width:80px;">
+                    <span class="input-group-btn">
+                        <button class="btn btn-primary" id="btn2" onclick="clickUpdateConfig()"
+                            type="button">确定</button>
+                    </span>
+                </div>
+            </div>
+        </div>
+</body>
+<script>
+    delete window.require;
+    delete window.exports;
+    delete window.module;
+</script>
+<script src="utils.js"></script>
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://cdn.bootcss.com/template_js/0.7.1-1/template.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script>
+<script src="https://cdn.bootcss.com/toastr.js/latest/js/toastr.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+
+<script>
+    window.bathpath = "http://localhost:3601/"
+    $(function () {
+        $.getJSON({
+            url: window.bathpath + "config",
+        })
+            .done(function (data) {
+                $('#host').val(data.host)
+                $('#port').val(data.port)
+            })
+    })
+    function clickUpdateConfig() {
+        btn = $('#btn2')
+        btn.text('保存中...')
+        $.getJSON({
+            url: window.bathpath + "config",
+            type: 'post',
+            contentType: "application/json",
+            data: JSON.stringify({
+                host: $('#host').val(),
+                port: $('#port').val()
+            })
+        })
+            .done(function (data) {
+                btn.text("ok, 成功")
+                window.setTimeout(function () {
+                    btn.text("确定")
+                }, 1000)
+            })
+            .fail(function (e) {
+                console.error(e.statusText, "配置失败");
+                btn.text("fail")
+            })
+    }
+</script>
+
+</html>

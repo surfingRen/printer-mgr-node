@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <link href="https://cdn.bootcss.com/toastr.js/latest/toastr.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/css/bootstrap-theme.min.css">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.bootstrap.min.css">
+    <title>打印机管理</title>
+    <style>
+        .wrapper {
+            max-width: 1000px;
+            margin: auto;
+        }
+
+        .m-5 {
+            margin: 5px;
+        }
+
+        .printer {
+            width: 600px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="wrapper" style="margin-top:20px;">
+        <div class="alert" id="status"></div>
+        <ul class="nav nav-pills">
+            <li role="presentation" class="active"><a href="index.html">首页</a></li>
+            <li role="presentation"><a href="config.html">配置</a></li>
+        </ul>
+        <div class="page-header">
+            <h1>打印机管理 <small> 基于【ESCPOS】- 管理局域网打印机</small></h1>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                云端地址
+            </div>
+            <div class="panel-body">
+                <div class="input-group" style="width: 450px;">
+                    <span class="input-group-addon" id="basic-addon1">云端服务器地址</span>
+                    <input type="text" class="form-control" id="host" value="" style="width:160px;">
+                    <span class="input-group-addon" id="basic-addon1">端口</span>
+                    <input type="text" id="port" class="form-control" value="" style="width:80px;">
+                    <span class="input-group-btn">
+                        <button class="btn btn-primary" id="btn2" onclick="clickUpdateConfig()"
+                            type="button">确定</button>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading"> <button type="button" onclick="addPrint()"
+                    class="btn btn-default m-5">添加</button></div>
+            <div class="panel-body">
+                <div class="mgr-printers">
+                </div>
+                <table id="dt1" class="table m-t-5 table-striped table-bordered" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>地址</th>
+                            <th>说明</th>
+                            <th>状态</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody class="printerList">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <div class="panel panel-default">
+            <div class="panel-heading">打印记录</div>
+            <div class="panel-body">
+                <table id="dt2" class="table table-striped table-bordered" style="width:100%">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>时间</th>
+                            <th>内容</th>
+                            <th nowrap>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody class="history">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+</body>
+<script>
+    delete window.require;
+    delete window.exports;
+    delete window.module;
+</script>
+<script src="utils.js"></script>
+<script src="https://cdn.bootcss.com/jquery/3.4.1/jquery.min.js"></script>
+<script src="https://cdn.bootcss.com/template_js/0.7.1-1/template.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@3.3.7/dist/js/bootstrap.min.js"></script>
+<script src="https://cdn.bootcss.com/toastr.js/latest/js/toastr.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+
+<script>
+    $(function () {
+        $.fn.dataTable.defaults.oLanguage = {
+            "sProcessing": "处理中...",
+            "sLengthMenu": "_MENU_",
+            "sZeroRecords": "没有匹配结果",
+            "sInfo": "第 _START_ 至 _END_ 项，共 _TOTAL_ 项",
+            "sInfoEmpty": "第 0 至 0 项，共 0 项",
+            "sInfoFiltered": " ( 过滤之前 _MAX_ 项 )",
+            "sInfoPostFix": "",
+            "sSearch": "搜索:",
+            "sUrl": "",
+            "sEmptyTable": "表中数据为空",
+            "sLoadingRecords": "载入中...",
+            "sInfoThousands": ",",
+            "sThousands": ",",
+            "oPaginate": {
+                "sFirst": "首页",
+                "sPrevious": "上页",
+                "sNext": "下页",
+                "sLast": "末页"
+            },
+            "oAria": {
+                "sSortAscending": ": 以升序排列此列",
+                "sSortDescending": ": 以降序排列此列"
+            }
+        }
+
+        $.getJSON({
+            url: window.bathpath + "config",
+        })
+            .done(function (data) {
+                if (data.status == '1') {
+                    $('#status').html("连接成功")
+                        .removeClass('alert-danger')
+                        .addClass('alert-success')
+                } else {
+                    $('#status').html("连接失败")
+                        .removeClass('alert-success')
+                        .addClass('alert-danger')
+                }
+                $('#host').val(data.host)
+                $('#port').val(data.port)
+            })
+
+        refreshPrinterList()
+        refreshHistory()
+    })
+    window.bathpath = "http://localhost:3601/"
+    function addPrint() {
+        str = `
+        <div class="input-group m-5 printer">
+            <span class="input-group-addon" id="basic-addon1">ID</span>
+            <input type="text" class="form-control id" value="001" placeholder="001">
+            <span class="input-group-addon" id="basic-addon1">IP</span>
+            <input type="text" class="form-control ip" value="192.168.0.87" placeholder="例如: 192.168.1.1">
+            <span class="input-group-addon" id="basic-addon1">端口</span>
+            <input type="text" class="form-control port" value="9100" style="width:70px" placeholder="端口">
+            <span class="input-group-addon" id="basic-addon1">备注</span>
+            <input type="text" class="form-control note" value="测试1" placeholder="">
+            <span class="input-group-btn">
+                <button class="btn btn-default" type="button" onclick="clickAddPrint()">确定</button>
+            </span>
+        </div>
+        `
+        $('.mgr-printers').append(str)
+    }
+
+
+    function refreshPrinterList() {
+        $.getJSON({
+            url: window.bathpath + "printer",
+        })
+            .done(function (data) {
+                tpl = `
+                <% for(i=0;i<list.length;i++){ %>
+                <tr>
+                    <td><%=list[i].id%></td>
+                    <td><%=list[i].ip%>:<%=list[i].port%></td>
+                    <td><%=list[i].note%></td>
+                    <td><%=list[i].status%></td>
+                    <td><button type="button" onclick="print('<%=list[i].id%>')" class="btn btn-default">打印测试</button></div></td>
+                </tr>
+                <% } %>
+                    `
+
+                $('.printerList').html(template(tpl, { list: data }))
+                // if (window.datatable1)
+                //     window.datatable1.destroy();
+                // window.datatable1 = $('#dt1').DataTable({
+                //     order: [[1, "asc"]], pageLength: 25,
+                //     responsive: true,
+                //     scrollY: 200,
+                //     scrollX: true,
+                //     dom:
+                //         "<'row'<'col-sm-2'l><'col-sm-3'<'html5buttons'B><'toolbar'>><'col-sm-7'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>"
+                // })
+            })
+            .fail(function (e) {
+                console.error(e.statusText, "获取数据失败");
+            });
+    }
+
+    function refreshHistory() {
+        $.getJSON({
+            url: window.bathpath + "history",
+        })
+            .done(function (data) {
+                tpl = `
+                <% for(i=0;i<list.length;i++){ %>
+                <tr>
+                    <td><%=list[i].id%></td>
+                    <td><%=list[i].time%></td>
+                    <td><%=JSON.stringify(list[i].content)%></td>
+                    <td><%=list[i].status%></td>
+                </tr>
+                <% } %>
+                    `
+                $('.history').html(template(tpl, { list: data }))
+
+                // if (window.datatable2)
+                //     window.datatable2.destroy()
+
+                // window.datatable2 = $('#dt2').DataTable({
+                //     order: [[1, "desc"]], pageLength: 25,
+                //     responsive: true,
+                //     scrollY: 400,
+                //     scrollX: true,
+                //     dom:
+                //         "<'row'<'col-sm-2'l><'col-sm-3'<'html5buttons'B><'toolbar'>><'col-sm-7'f>><'row'<'col-sm-12'tr>><'row'<'col-sm-5'i><'col-sm-7'p>>"
+                // })
+            })
+            .fail(function (e) {
+                console.error(e.statusText, "获取数据失败");
+            });
+    }
+
+    function clickAddPrint() {
+        btn = $(event.srcElement).text("adding...")
+        container = $(event.srcElement).closest('.printer')
+        newId = container.find('.id').val()
+        newIp = container.find('.ip').val()
+        newNote = container.find('.note').val()
+        port = container.find('.port').val()
+        console.log(container, 'ip:', newIp, 'note:', newNote)
+        $.getJSON({
+            url: window.bathpath + "printer",
+            type: 'post',
+            contentType: "application/json",
+            data: JSON.stringify({
+                note: newNote,
+                ip: newIp,
+                id: newId,
+                port: port
+            })
+        })
+            .done(function (data) {
+                if (data.msg) {
+                    alert(data.msg)
+                    btn.text("确定")
+                } else {
+                    btn.text("ok, 添加成功")
+                    window.setTimeout(function () {
+                        container.fadeOut()
+                        refreshPrinterList()
+                    }, 1000)
+                }
+            })
+            .fail(function (e) {
+                console.error(e.statusText, "添加失败");
+                btn.text("fail")
+            })
+    }
+
+    function print(pid) {
+        $.getJSON({
+            url: window.bathpath + "print",
+            type: 'post',
+            contentType: "application/json",
+            data: JSON.stringify({
+                pid: pid,
+                title: '菜品出单',
+                desk: '读读书聚',
+                deskNum: '001',
+                list: [
+                    '白灿',
+                    '搜大家'
+                ]
+            })
+        })
+            .done(function (data) {
+
+                toastr.info('请求成功')
+                window.setTimeout(function () {
+                    refreshHistory()
+                }, 500)
+
+            })
+            .fail(function (e) {
+                console.error(e.statusText, "打印失败");
+            })
+    }
+
+    function clickUpdateConfig() {
+        btn = $('#btn2')
+        btn.text('保存中...')
+        $.getJSON({
+            url: window.bathpath + "config",
+            type: 'post',
+            contentType: "application/json",
+            data: JSON.stringify({
+                host: $('#host').val(),
+                port: $('#port').val()
+            })
+        })
+            .done(function (data) {
+                btn.text("ok, 成功")
+                window.setTimeout(function () {
+                    btn.text("确定")
+                }, 1000)
+            })
+            .fail(function (e) {
+                console.error(e.statusText, "配置失败");
+                btn.text("fail")
+            })
+    }
+</script>
+
+</html>
