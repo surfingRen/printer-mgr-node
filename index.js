@@ -182,7 +182,7 @@ start = function () {
     })
 
     app.listen(port, () => console.log('server is running, ', url))
-    
+
     return url
 
 }
@@ -201,9 +201,19 @@ function getId() {
 
 function printOrder(info) {
 
+    if (!info||!info.pid) {
+        console.error('没有提供打印机 id 参数')
+        return
+    }
+
     myprinter = db.get('printer')
         .find({ id: info.pid })
         .value()
+
+    if (!myprinter) {
+        console.error('打印机 id:', info.pid, '不存在')
+        return
+    }
 
     id = info.id
     ip = myprinter.ip
@@ -267,11 +277,11 @@ function connectionServer() {
     client.setEncoding('utf8');
     client.on('connect', function () {
         console.log('客户端：已经与服务端建立连接');
-        db.get('config').set('status','1').write()
+        db.get('config').set('status', '1').write()
     });
     client.on('error', function () {
         console.log('客户端：连接异常');
-        db.get('config').set('status','0').write()
+        db.get('config').set('status', '0').write()
     })
 
     client.on('data', function (data) {
@@ -385,7 +395,7 @@ function connectionServer() {
 
     client.on('close', function (data) {
         console.log('客户端：连接断开');
-        db.get('config').set('status','0').write()
+        db.get('config').set('status', '0').write()
         setTimeout(function () {
             console.log('重连')
             connectionServer()
